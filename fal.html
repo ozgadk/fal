@@ -618,15 +618,31 @@ async function doRead(kind){
   try{
     const r=await fetch(WORKER+'/fal/read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});
     const d=await r.json().catch(()=>({}));clearTimeout(to);
-    if(d.status==='used'){
-      st.result=d.result;st.cards=d.cards||(kind==='tarot'?body.cards:null);st.kind=d.kind||kind;st.screen='result';
-      LSs('fal.res.'+CODE,{kind:st.kind,result:st.result,cards:st.cards});if(st.thumb)LSs('fal.thumb.'+CODE,st.thumb);
-      render();scrollTo(0,0);return}
+    if(d.status==='used'){showUsed(d,kind,body);return}
     if(d.error==='not_cup'){st.screen='error';st.err=t('notCup')+' '+(d.reason||'')+' '+t('retake');st.retry='retrycup';st.retryLabel=t('addPh');render();return}
     if(d.error==='busy'){st.screen='error';st.err=t('busy');st.retry=null;render();return}
     if(d.error==='invalid'){st.screen='error';st.err=t('invalid');st.retry=null;render();return}
     st.screen='error';st.err=t('aiFail');st.retry='retryread';st.retryLabel='🔮 '+t('readBtn');render();
-  }catch(x){clearTimeout(to);st.screen='error';st.err=t('net');st.retry='retryread';st.retryLabel='🔮 '+t('readBtn');render()}
+  }catch(x){clearTimeout(to);
+    // bağlantı koptuysa okuma worker'da sürüyor/bitmiş olabilir: sonucu /fal/check ile bekle
+    if(await pollResult(kind,body))return;
+    st.screen='error';st.err=t('net');st.retry='retryread';st.retryLabel='🔮 '+t('readBtn');render()}
+}
+function showUsed(d,kind,body){
+  st.result=d.result;st.cards=d.cards||(kind==='tarot'?body.cards:null);st.kind=d.kind||kind;st.screen='result';
+  LSs('fal.res.'+CODE,{kind:st.kind,result:st.result,cards:st.cards});if(st.thumb)LSs('fal.thumb.'+CODE,st.thumb);
+  render();scrollTo(0,0);
+}
+async function pollResult(kind,body){
+  const end=Date.now()+150000;
+  while(Date.now()<end){
+    await new Promise(r=>setTimeout(r,4000));
+    try{const r=await fetch(WORKER+'/fal/check?c='+encodeURIComponent(CODE));const d=await r.json();
+      if(d.status==='used'){showUsed(d,kind,body);return true}
+      if(d.status!=='busy')return false;
+    }catch(e){}
+  }
+  return false;
 }
 
 /* ---------- share images ---------- */
