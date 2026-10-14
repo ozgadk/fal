@@ -553,7 +553,7 @@ function renderResult(){
     const cards=st.cards||[];const sp=cards.length===10?'celtic':'three';
     body=`<div class="rcards ${sp}">${cards.map((c,i)=>`<div class="rc">${cardSVG(c.id,cName(c.id),c.rev,'rr'+i)}</div>`).join('')}</div>
     <section><h2>${esc(t('ov'))}</h2><p>${esc(r.overview)}</p></section>
-    <section><h2>${esc(t('cards'))}</h2>${(r.cards||[]).map((c,i)=>`<div class="rcard">${cards[i]?`<div class="mini">${cardSVG(cards[i].id,cName(cards[i].id),cards[i].rev,'rm'+i)}</div>`:''}<div><em>${esc(c.position)}</em><b>${esc(c.card)}${cards[i]&&cards[i].rev?` <small>(${esc(t('rev'))})</small>`:''}</b><p>${esc(c.reading)}</p></div></div>`).join('')}</section>
+    <section><h2>${esc(t('cards'))}</h2>${(r.cards||[]).map((c,i)=>`<div class="rcard">${cards[i]?`<div class="mini">${cardSVG(cards[i].id,cName(cards[i].id),cards[i].rev,'rm'+i)}</div>`:''}<div><em>${esc(c.position)}</em><b>${esc(cards[i]?cName(cards[i].id):c.card)}${cards[i]&&cards[i].rev?` <small>(${esc(t('rev'))})</small>`:''}</b><p>${esc(c.reading)}</p></div></div>`).join('')}</section>
     ${r.patterns?`<section><h2>${esc(t('pat'))}</h2><p>${esc(r.patterns)}</p></section>`:''}`;
   }else{
     body=`${st.thumb?`<div class="cupimg"><img src="${st.thumb}" alt=""></div>`:''}
@@ -612,7 +612,7 @@ async function compress(file,max,qual){
 async function doRead(kind){
   st.kind=kind;st.screen='wait';render();
   const body={code:CODE,kind,lang,topic:st.topic,question:st.q.trim(),drinks:DRINKS};
-  if(kind==='tarot'){body.spread=st.spread;body.cards=st.picks.map(p=>({id:p.id,rev:p.rev}))}
+  if(kind==='tarot'){body.spread=st.spread;body.cards=st.picks.map(p=>({id:p.id,rev:p.rev}));body.names=st.picks.map(p=>cName(p.id))}
   else body.images=st.imgs.filter(Boolean);
   const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),150000);
   try{
@@ -701,7 +701,7 @@ async function makeCarousel(){
   // text pages
   const blocks=[];const add=(h,txt,img)=>blocks.push({h,txt,img});
   add(t('ov'),r.overview);
-  if(st.kind==='tarot')(r.cards||[]).forEach((c,i)=>add(c.position+' · '+c.card,c.reading,st.cards&&st.cards[i]));
+  if(st.kind==='tarot')(r.cards||[]).forEach((c,i)=>add(c.position+' · '+(st.cards&&st.cards[i]?cName(st.cards[i].id):c.card),c.reading,st.cards&&st.cards[i]));
   else{(r.symbols||[]).forEach(s=>add('✦ '+s.symbol,s.location+' — '+s.meaning));(r.areas||[]).forEach(a=>add(a.area,a.reading))}
   if(r.patterns)add(t('pat'),r.patterns);
   add(t('msg'),r.synthesis);
@@ -711,7 +711,11 @@ async function makeCarousel(){
   for(const b of blocks){
     g=pages[pages.length-1].getContext('2d');
     const imgH=b.img?300:0;
-    if(y+150+imgH>MAXY||pages.length===1){g=newPage();head(g);y=140}
+    // blok bu sayfaya sığmıyor ama boş sayfaya sığıyorsa yeni sayfaya geç (paragraf ortadan bölünmesin)
+    g.font='700 46px Alegreya,Georgia,serif';const hN=wrap(g,b.h,W-2*X).length;
+    g.font='400 36px "Alegreya Sans",sans-serif';const tN=wrap(g,b.txt||'',W-2*X).length;
+    const need=(b.img?320:0)+hN*56+10+tN*LH;
+    if(pages.length===1||y+150+imgH>MAXY||(y+need>MAXY&&140+need<=MAXY)){g=newPage();head(g);y=140}
     if(b.img){const im=await svgImg(cardSVG(b.img.id,cName(b.img.id),b.img.rev,'cp'+y),352,600);if(im){g.save();g.shadowColor='rgba(176,124,255,.6)';g.shadowBlur=30;g.drawImage(im,W/2-88,y,176,300);g.restore()}y+=320}
     g.textAlign='left';g.fillStyle='#ffd96b';g.font='700 46px Alegreya,Georgia,serif';wrap(g,b.h,W-2*X).forEach(l=>{g.fillText(l,X,y+40);y+=56});y+=10;
     g.fillStyle='#f3e8ff';g.font='400 36px "Alegreya Sans",sans-serif';
