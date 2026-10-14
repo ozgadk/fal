@@ -701,7 +701,7 @@ async function makeCarousel(){
   // text pages
   const blocks=[];const add=(h,txt,img)=>blocks.push({h,txt,img});
   add(t('ov'),r.overview);
-  if(st.kind==='tarot')(r.cards||[]).forEach((c,i)=>add(c.position+' · '+(st.cards&&st.cards[i]?cName(st.cards[i].id):c.card),c.reading,st.cards&&st.cards[i]));
+  if(st.kind==='tarot')(r.cards||[]).forEach((c,i)=>add(c.position+' · '+(st.cards&&st.cards[i]?cName(st.cards[i].id)+(st.cards[i].rev?' ('+t('rev')+')':''):c.card),c.reading,st.cards&&st.cards[i]));
   else{(r.symbols||[]).forEach(s=>add('✦ '+s.symbol,s.location+' — '+s.meaning));(r.areas||[]).forEach(a=>add(a.area,a.reading))}
   if(r.patterns)add(t('pat'),r.patterns);
   add(t('msg'),r.synthesis);
