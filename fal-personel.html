@@ -58,8 +58,9 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--line);b
   </div>
 
   <div id="main" hidden>
-    <p>Müşteri tarot ya da Türk kahvesi falı istediğinde yeni bir QR oluşturup okutun. Her QR <b>tek kullanımlıktır</b> ve 30 saat geçerlidir.</p>
-    <button class="btn big" id="new">🔮 Yeni fal QR'ı oluştur</button>
+    <p>Kokteyl alan müşteriye <b>Tarot QR</b>, Türk kahvesi alan müşteriye <b>Kahve QR</b> verin. QR yalnızca o fala açılır, <b>tek kullanımlıktır</b> ve 30 saat geçerlidir.</p>
+    <button class="btn big" data-new="tarot">🍸 Kokteyl → 🃏 Tarot QR</button>
+    <button class="btn big" data-new="coffee" style="background:linear-gradient(90deg,#f1b94a,#c98a4a)">☕ Türk kahvesi → Kahve QR</button>
     <p class="err" id="merr"></p>
     <div class="hd"><h2>Son kodlar</h2><button class="btn ghost sm" id="refresh">Yenile</button></div>
     <div id="list"><p>Yükleniyor…</p></div>
@@ -87,22 +88,23 @@ const why=e=>e.code==='staff_key'?'Anahtar Cloudflare\'deki STAFF_KEY ile aynı 
 async function list(){
   const el=$('#list');
   try{const d=await call('/fal/list',{method:'GET'});const L={new:'Bekliyor',busy:'Okunuyor…',used:'Kullanıldı'};
-    el.innerHTML=d.codes.length?d.codes.map(c=>`<div class="row ${c.s}"><span class="c">${esc(c.code)}</span><span>${hm(c.t)}</span><span>${L[c.s]||c.s}${c.kind?` · ${c.kind==='coffee'?'☕ Kahve':'🃏 Tarot'}`:''}</span>${c.s==='new'?`<button class="btn ghost sm" data-qr="${esc(c.code)}">QR</button>`:'<span></span>'}</div>`).join(''):'<p>Henüz kod yok.</p>';
+    el.innerHTML=d.codes.length?d.codes.map(c=>`<div class="row ${c.s}"><span class="c">${esc(c.code)}</span><span>${hm(c.t)}</span><span>${L[c.s]||c.s}${c.kind?` · ${c.kind==='coffee'?'☕ Kahve':'🃏 Tarot'}`:''}</span>${c.s==='new'?`<button class="btn ghost sm" data-qr="${esc(c.code)}" data-k="${esc(c.kind||'')}">QR</button>`:'<span></span>'}</div>`).join(''):'<p>Henüz kod yok.</p>';
   }catch(e){el.innerHTML=`<p class="err">${esc(why(e))}</p>`}
 }
-function qr(code){
-  if(!window.qrcode){$('#modal').innerHTML=`<div class="ov"><div class="md"><p>QR çizilemedi (internet?). Kod:</p><div class="code">${esc(code)}</div><button class="btn" data-close>Tamam</button></div></div>`;return}
+function qr(code,kind){
+  const kl=kind==='coffee'?'☕ Kahve falı':kind==='tarot'?'🃏 Tarot':'';
+  if(!window.qrcode){$('#modal').innerHTML=`<div class="ov"><div class="md"><p>QR çizilemedi (internet?). Kod:</p><div class="code">${esc(code)}</div>${kl?`<p style="color:#ffd96b;font-weight:700">${kl}</p>`:''}<button class="btn" data-close>Tamam</button></div></div>`;return}
   const q=qrcode(0,'M');q.addData(falUrl(code));q.make();
-  $('#modal').innerHTML=`<div class="ov"><div class="md"><div class="qr">${q.createSvgTag({cellSize:8,margin:2,scalable:true})}</div><div class="code">${esc(code)}</div><p>Müşteriye bu ekranı okutun. Kod tek kullanımlıktır.</p><button class="btn" data-close>Tamam</button></div></div>`;
+  $('#modal').innerHTML=`<div class="ov"><div class="md"><div class="qr">${q.createSvgTag({cellSize:8,margin:2,scalable:true})}</div><div class="code">${esc(code)}</div>${kl?`<p style="color:#ffd96b;font-weight:700;font-size:20px;margin:4px 0">${kl}</p>`:''}<p>Müşteriye bu ekranı okutun. Kod tek kullanımlıktır.</p><button class="btn" data-close>Tamam</button></div></div>`;
 }
 document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.id==='gen'){const a=new Uint8Array(24);crypto.getRandomValues(a);$('#k').value=[...a].map(x=>x.toString(16).padStart(2,'0')).join('');$('#serr').textContent='Bu anahtarı kopyalayıp Cloudflare\'de STAFF_KEY olarak ekleyin.'}
   else if(b.id==='save'){const w=$('#w').value.trim(),k=$('#k').value.trim();if(!/^https:\/\//.test(w)){$('#serr').textContent='Worker adresi https:// ile başlamalı.';return}if(k.length<16){$('#serr').textContent='Anahtar en az 16 karakter olmalı.';return}W=w;K=k;set('falp.worker',W);set('falp.key',K);show()}
   else if(b.id==='settings'){$('#setup').hidden=false;$('#main').hidden=true;$('#serr').textContent=''}
-  else if(b.id==='new'){b.disabled=true;$('#merr').textContent='';try{const d=await call('/fal/new',{method:'POST',body:'{}'});qr(d.code);list()}catch(x){$('#merr').textContent=why(x)}b.disabled=false}
+  else if(b.dataset.new){const k=b.dataset.new;b.disabled=true;$('#merr').textContent='';try{const d=await call('/fal/new',{method:'POST',body:JSON.stringify({kind:k})});qr(d.code,k);list()}catch(x){$('#merr').textContent=why(x)}b.disabled=false}
   else if(b.id==='refresh')list();
-  else if(b.dataset.qr)qr(b.dataset.qr);
+  else if(b.dataset.qr)qr(b.dataset.qr,b.dataset.k);
   else if(b.hasAttribute('data-close')){$('#modal').innerHTML='';list()}
 });
 show();

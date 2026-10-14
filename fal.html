@@ -488,7 +488,7 @@ async function boot(){
     if(d.status==='used'){Object.assign(st,{kind:d.kind,result:d.result,cards:d.cards,screen:'result'});if(d.lang&&L[d.lang])lang=d.lang;st.thumb=LSg('fal.thumb.'+CODE,null);render();return}
     if(d.status==='busy'){st.screen='error';st.err=t('busy');render();return}
     if(d.status!=='new'){st.screen='error';st.err=t('invalid');render();return}
-    st.screen='home';render();
+    st.lock=d.kind==='coffee'||d.kind==='tarot'?d.kind:null;st.screen='home';render();
   }catch(e){if(saved){Object.assign(st,saved,{screen:'result'});render();return}st.screen='error';st.err=t('net');render()}
 }
 
@@ -503,8 +503,8 @@ function render(){
   if(s==='home'){
     el.innerHTML=`<div class="scr center">${langs}<div class="art big">${pandaSVG('ph')}</div><h1 class="ttl">${esc(t('name'))}</h1><p class="lead">${esc(t('welcome'))}</p>
       <div class="choices">
-        <button class="choice" data-act="pickkind" data-k="tarot"><span class="cv fan">${[0,1,2].map(i=>`<i style="--r:${(i-1)*14}deg">${backSVG('hb'+i)}</i>`).join('')}</span><b>${esc(t('tarot'))}</b><small>${esc(t('tarotD'))}</small></button>
-        <button class="choice" data-act="pickkind" data-k="coffee"><span class="cv">${cupSVG()}</span><b>${esc(t('coffee'))}</b><small>${esc(t('coffeeD'))}</small></button>
+        ${st.lock==='coffee'?'':`<button class="choice" data-act="pickkind" data-k="tarot"><span class="cv fan">${[0,1,2].map(i=>`<i style="--r:${(i-1)*14}deg">${backSVG('hb'+i)}</i>`).join('')}</span><b>${esc(t('tarot'))}</b><small>${esc(t('tarotD'))}</small></button>`}
+        ${st.lock==='tarot'?'':`<button class="choice" data-act="pickkind" data-k="coffee"><span class="cv">${cupSVG()}</span><b>${esc(t('coffee'))}</b><small>${esc(t('coffeeD'))}</small></button>`}
       </div></div>`;return}
   const topics=`<p class="lbl">${esc(t('topicL'))}</p><div class="chips">${Object.entries(t('topics')).map(([k,v])=>`<button data-act="topic" data-v="${k}" aria-pressed="${st.topic===k}">${esc(v)}</button>`).join('')}</div>`;
   if(s==='tsetup'){
